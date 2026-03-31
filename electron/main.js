@@ -1,11 +1,20 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-require('dotenv').config();
+const fs = require('fs');
+const {
+  getDatabase,
+  getDatabasePath,
+  closeDatabase,
+  saveMovie,
+  removeMovie,
+  getSavedMovie,
+  getSavedMoviesByType
+} = require('./database');
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+let mainWindow = null;
 
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1000,
@@ -18,62 +27,153 @@ function createWindow() {
     }
   });
 
-  win.loadURL('http://localhost:5173');
+  mainWindow.loadURL('http://localhost:5173');
 }
 
-function buildTmdbHeaders() {
-  const token = process.env.TMDB_API_TOKEN;
+function getStats() {
+  const db = getDatabase();
 
-  if (!token) {
-    throw new Error(
-      'Не найден TMDB_API_TOKEN. Добавь токен в файл .env в корне проекта.'
-    );
+  const favorites = getSavedMoviesByType('favorite');
+  const watchlist = getSavedMoviesByType('watchlist');
+  const allSaved = [...favorites, ...watchlist];
+
+  const uniqueMoviesMap = new Map();
+
+  for (const movie of allSaved) {
+    if (!uniqueMoviesMap.has(movie.id)) {
+      uniqueMoviesMap.set(movie.id, movie);
+    }
   }
 
+  const uniqueMovies = Array.from(uniqueMoviesMap.values());
+
+  const totalFavorites = favorites.length;
+  const totalWatchlist = watchlist.length;
+  const totalSaved = uniqueMovies.length;
+
+  const ratedMovies = uniqueMovies.filter(
+    (movie) => typeof movie.vote_average === 'number' && movie.vote_average > 0
+  );
+
+  const averageRating =
+    ratedMovies.length > 0
+      ? ratedMovies.reduce((sum, movie) => sum + movie.vote_average, 0) /
+        ratedMovies.length
+      : 0;
+
   return {
-    Authorization: `Bearer ${token}`,
-    accept: 'application/json'
+    totalFavorites,
+    totalWatchlist,
+    totalSaved,
+    averageRating
   };
 }
 
-function mapMovie(movie) {
-  return {
-    id: movie.id,
-    title: movie.title || movie.original_title || 'Без названия',
-    originalTitle: movie.original_title || '',
-    overview: movie.overview || '',
-    originalOverview: movie.original_overview || '',
-    posterPath: movie.poster_path || null,
-    backdropPath: movie.backdrop_path || null,
-    voteAverage: movie.vote_average || 0,
-    releaseDate: movie.release_date || '',
-    originalLanguage: movie.original_language || '',
-    genreIds: Array.isArray(movie.genre_ids) ? movie.genre_ids : []
-  };
-}
+ipcMain.handle('db:save-favorite', async (_, movie) => {
+  return saveMovie(movie, 'favorite');
+});
 
-ipcMain.handle('tmdb:get-popular-movies', async () => {
-  const url = `${TMDB_BASE_URL}/movie/popular?language=ru-RU&page=1`;
+ipcMain.handle('db:save-watchlist', async (_, movie) => {
+  return saveMovie(movie, 'watchlist');
+});
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: buildTmdbHeaders()
-  });
+ipcMain.handle('db:remove-movie', async (_, movieId) => {
+  return removeMovie(movieId);
+});
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Ошибка TMDB: ${response.status} ${errorText}`);
+ipcMain.handle('db:get-saved-movie', async (_, movieId) => {
+  return getSavedMovie(movieId);
+});
+
+ipcMain.handle('db:get-favorites', async () => {
+  return getSavedMoviesByType('favorite');
+});
+
+ipcMain.handle('db:get-watchlist', async () => {
+  return getSavedMoviesByType('watchlist');
+});
+
+ipcMain.handle('db:get-stats', async () => {
+  return getStats();
+});
+
+ipcMain.handle('db:export-database', async () => {
+  try {
+    const sourcePath = getDatabasePath();
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Экспорт базы Кинохаб',
+      defaultPath: 'kinohub-backup.db',
+      filters: [
+        { name: 'SQLite Database', extensions: ['db', 'sqlite'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { success: false, canceled: true };
+    }
+
+    closeDatabase();
+    fs.copyFileSync(sourcePath, result.filePath);
+    getDatabase();
+
+    return {
+      success: true,
+      canceled: false,
+      filePath: result.filePath
+    };
+  } catch (error) {
+    getDatabase();
+
+    return {
+      success: false,
+      canceled: false,
+      error: error.message || 'Не удалось экспортировать базу.'
+    };
   }
+});
 
-  const data = await response.json();
+ipcMain.handle('db:import-database', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Импорт базы Кинохаб',
+      properties: ['openFile'],
+      filters: [
+        { name: 'SQLite Database', extensions: ['db', 'sqlite'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
 
-  return {
-    page: data.page,
-    results: Array.isArray(data.results) ? data.results.map(mapMovie) : []
-  };
+    if (result.canceled || !result.filePaths?.length) {
+      return { success: false, canceled: true };
+    }
+
+    const importPath = result.filePaths[0];
+    const targetPath = getDatabasePath();
+
+    closeDatabase();
+    fs.copyFileSync(importPath, targetPath);
+    getDatabase();
+
+    return {
+      success: true,
+      canceled: false,
+      filePath: importPath
+    };
+  } catch (error) {
+    getDatabase();
+
+    return {
+      success: false,
+      canceled: false,
+      error: error.message || 'Не удалось импортировать базу.'
+    };
+  }
 });
 
 app.whenReady().then(() => {
+  getDatabase();
   createWindow();
 
   app.on('activate', () => {
@@ -81,6 +181,10 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+app.on('before-quit', () => {
+  closeDatabase();
 });
 
 app.on('window-all-closed', () => {
