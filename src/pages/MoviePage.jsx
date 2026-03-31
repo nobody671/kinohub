@@ -15,6 +15,7 @@ import {
   getWatchProviders
 } from '../services/tmdb';
 import { loadSettings } from '../utils/settings';
+import AppFooter from '../components/AppFooter';
 
 function MoviePage() {
   const { movieId } = useParams();
@@ -485,6 +486,7 @@ function MoviePage() {
             </div>
           )}
         </section>
+        <AppFooter />
       </div>
     </div>
   );

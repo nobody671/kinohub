@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import MovieCard from '../components/MovieCard';
 import { getPopularMovies, searchMovies } from '../services/tmdb';
+import AppFooter from '../components/AppFooter';
 
 function HomePage() {
   const [popularMovies, setPopularMovies] = useState([]);
@@ -261,6 +262,7 @@ function HomePage() {
             </div>
           )}
         </section>
+        <AppFooter />
       </div>
     </div>
   );
