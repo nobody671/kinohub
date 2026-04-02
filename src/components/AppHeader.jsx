@@ -56,7 +56,7 @@ function AppHeader() {
 
   return (
     <>
-      <div className="app-card mb-8 flex flex-col gap-4 rounded-[28px] p-5 shadow-2xl">
+      <div className="app-card sticky top-0 z-50 mb-8 flex flex-col gap-4 rounded-[28px] p-5 shadow-2xl backdrop-blur-md">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <Link

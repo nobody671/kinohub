@@ -32,6 +32,14 @@ function getSavedTypeLabel(type) {
   return matchedOption ? matchedOption.label : 'Не сохранено';
 }
 
+function formatMoney(value) {
+  if (!value || value <= 0) {
+    return 'Неизвестно';
+  }
+
+  return new Intl.NumberFormat('ru-RU').format(value) + ' $';
+}
+
 function MoviePage() {
   const { movieId } = useParams();
   const [movie, setMovie] = useState(null);
@@ -231,10 +239,16 @@ function MoviePage() {
 
   const posterUrl = getImageUrl(movie.poster_path);
   const genres = Array.isArray(movie.genres) ? movie.genres : [];
-  const cast = Array.isArray(movie.credits?.cast) ? movie.credits.cast.slice(0, 8) : [];
+  const cast = Array.isArray(movie.credits?.cast) ? movie.credits.cast.slice(0, 10) : [];
   const trailer = getTrailer(movie.videos?.results || []);
   const providers = getWatchProviders(movie, settings.providersRegion);
   const providerLink = getProviderLink(movie, settings.providersRegion);
+  const productionCountries = Array.isArray(movie.production_countries)
+    ? movie.production_countries
+    : [];
+  const productionCompanies = Array.isArray(movie.production_companies)
+    ? movie.production_companies
+    : [];
 
   let trailerExternalUrl = '';
   let trailerEmbedUrl = '';
@@ -282,7 +296,7 @@ function MoviePage() {
             </div>
 
             <div className="app-card rounded-[28px] p-5 shadow-2xl">
-              <h2 className="text-lg font-bold app-title">Кратко о фильме</h2>
+              <h2 className="text-lg font-bold app-title">Основные факты</h2>
 
               <div className="mt-4 space-y-3">
                 <div className="app-card-strong rounded-2xl px-4 py-3">
@@ -306,6 +320,13 @@ function MoviePage() {
                   </p>
                 </div>
 
+                <div className="app-card-strong rounded-2xl px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Статус релиза</p>
+                  <p className="mt-1 text-sm font-semibold app-title">
+                    {movie.status || 'Неизвестно'}
+                  </p>
+                </div>
+
                 {!!movie.original_title && movie.original_title !== movie.title && (
                   <div className="app-card-strong rounded-2xl px-4 py-3">
                     <p className="text-xs uppercase tracking-wide app-text-soft">
@@ -326,24 +347,40 @@ function MoviePage() {
                 {getMovieTitle(movie)}
               </h1>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <div className="app-btn-accent-soft rounded-2xl px-4 py-2 text-sm font-semibold">
-                  Рейтинг TMDB: {movie.vote_average ? movie.vote_average.toFixed(1) : '—'}
+              {!!movie.tagline && (
+                <p className="mt-3 text-sm italic app-text-soft">
+                  {movie.tagline}
+                </p>
+              )}
+
+              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="app-card-strong rounded-2xl px-4 py-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Статус</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {getSavedTypeLabel(currentSavedType)}
+                  </p>
                 </div>
 
-                <div className="app-chip rounded-2xl px-4 py-2 text-sm">
-                  Дата выхода: {movie.release_date || 'Неизвестно'}
+                <div className="app-card-strong rounded-2xl px-4 py-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Моя оценка</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {hasUserRating ? savedMovie.user_rating : 'Нет оценки'}
+                  </p>
                 </div>
 
-                <div className="app-chip rounded-2xl px-4 py-2 text-sm">
-                  Длительность: {movie.runtime ? `${movie.runtime} мин.` : 'Неизвестно'}
+                <div className="app-card-strong rounded-2xl px-4 py-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Моя заметка</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {hasUserNote ? 'Есть заметка' : 'Пока пусто'}
+                  </p>
                 </div>
 
-                {hasUserRating && (
-                  <div className="app-btn-success-soft rounded-2xl px-4 py-2 text-sm font-semibold">
-                    Моя оценка: {savedMovie.user_rating}
-                  </div>
-                )}
+                <div className="app-card-strong rounded-2xl px-4 py-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Где смотреть</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {providers.length > 0 ? `${providers.length} провайдеров` : 'Нет данных'}
+                  </p>
+                </div>
               </div>
 
               <section className="mt-8">
@@ -366,29 +403,6 @@ function MoviePage() {
                         Удалить из сохранённых
                       </button>
                     )}
-                  </div>
-
-                  <div className="mt-5 grid gap-4 md:grid-cols-3">
-                    <div className="rounded-2xl app-card px-4 py-4">
-                      <p className="text-xs uppercase tracking-wide app-text-soft">Статус</p>
-                      <p className="mt-2 text-sm font-semibold app-title">
-                        {getSavedTypeLabel(currentSavedType)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl app-card px-4 py-4">
-                      <p className="text-xs uppercase tracking-wide app-text-soft">Моя оценка</p>
-                      <p className="mt-2 text-sm font-semibold app-title">
-                        {hasUserRating ? savedMovie.user_rating : 'Нет оценки'}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl app-card px-4 py-4">
-                      <p className="text-xs uppercase tracking-wide app-text-soft">Моя заметка</p>
-                      <p className="mt-2 text-sm font-semibold app-title">
-                        {hasUserNote ? 'Есть заметка' : 'Пока пусто'}
-                      </p>
-                    </div>
                   </div>
 
                   <div className="mt-6 grid gap-6 xl:grid-cols-2">
@@ -522,6 +536,44 @@ function MoviePage() {
               </section>
 
               <section className="mt-8">
+                <h2 className="text-xl font-bold app-title">Дополнительная информация</h2>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="app-card-strong rounded-2xl p-4">
+                    <p className="text-xs uppercase tracking-wide app-text-soft">Страны</p>
+                    <p className="mt-2 text-sm font-semibold app-title">
+                      {productionCountries.length > 0
+                        ? productionCountries.map((country) => country.name).join(', ')
+                        : 'Неизвестно'}
+                    </p>
+                  </div>
+
+                  <div className="app-card-strong rounded-2xl p-4">
+                    <p className="text-xs uppercase tracking-wide app-text-soft">Бюджет</p>
+                    <p className="mt-2 text-sm font-semibold app-title">
+                      {formatMoney(movie.budget)}
+                    </p>
+                  </div>
+
+                  <div className="app-card-strong rounded-2xl p-4">
+                    <p className="text-xs uppercase tracking-wide app-text-soft">Сборы</p>
+                    <p className="mt-2 text-sm font-semibold app-title">
+                      {formatMoney(movie.revenue)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 app-card-strong rounded-2xl p-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Студии</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {productionCompanies.length > 0
+                      ? productionCompanies.map((company) => company.name).join(', ')
+                      : 'Информация не указана'}
+                  </p>
+                </div>
+              </section>
+
+              <section className="mt-8">
                 <h2 className="text-xl font-bold app-title">Жанры</h2>
 
                 {genres.length > 0 ? (
@@ -538,17 +590,20 @@ function MoviePage() {
               </section>
 
               <section className="mt-8">
-                <h2 className="text-xl font-bold app-title">Актёры</h2>
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="text-xl font-bold app-title">Актёры</h2>
+                  <p className="text-sm app-text-soft">Первые {cast.length} актёров</p>
+                </div>
 
                 {cast.length > 0 ? (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
                     {cast.map((person) => (
                       <div
                         key={person.cast_id || person.credit_id}
                         className="app-card-strong rounded-2xl p-4"
                       >
-                        <p className="font-semibold app-title">{person.name}</p>
-                        <p className="mt-1 text-sm app-text-soft">
+                        <p className="text-sm font-semibold app-title">{person.name}</p>
+                        <p className="mt-1 text-xs app-text-soft">
                           {person.character || 'Роль не указана'}
                         </p>
                       </div>
@@ -614,7 +669,12 @@ function MoviePage() {
 
               <section className="mt-8">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                  <h2 className="text-xl font-bold app-title">Где смотреть</h2>
+                  <div>
+                    <h2 className="text-xl font-bold app-title">Где смотреть</h2>
+                    <p className="mt-1 text-sm app-text-soft">
+                      Регион провайдеров: {settings.providersRegion}
+                    </p>
+                  </div>
 
                   {providerLink && (
                     <a
@@ -627,10 +687,6 @@ function MoviePage() {
                     </a>
                   )}
                 </div>
-
-                <p className="mt-3 text-sm app-text-soft">
-                  Текущий регион провайдеров: {settings.providersRegion}
-                </p>
 
                 {providers.length > 0 ? (
                   <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -654,18 +710,24 @@ function MoviePage() {
                             )}
                           </div>
 
-                          <div>
-                            <p className="font-semibold app-title">{provider.provider_name}</p>
-                            <p className="mt-1 text-sm app-text-soft">Доступно у провайдера</p>
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold app-title">
+                              {provider.provider_name}
+                            </p>
+                            <p className="mt-1 text-xs app-text-soft">
+                              Доступно у провайдера
+                            </p>
                           </div>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm app-text-soft">
-                    Для этого фильма пока нет данных о провайдерах просмотра для региона {settings.providersRegion}.
-                  </p>
+                  <div className="app-card-strong mt-4 rounded-2xl p-4">
+                    <p className="text-sm app-text-muted">
+                      Для этого фильма пока нет данных о провайдерах просмотра для региона {settings.providersRegion}.
+                    </p>
+                  </div>
                 )}
               </section>
             </div>

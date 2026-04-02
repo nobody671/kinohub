@@ -4,12 +4,15 @@ import AppHeader from '../components/AppHeader';
 import MovieCard from '../components/MovieCard';
 import {
   getImageUrl,
+  getLogoUrl,
+  getProviderLink,
   getRecommendedTvShows,
   getSimilarTvShows,
   getTrailer,
   getTvDetails,
   getTvOverview,
-  getTvTitle
+  getTvTitle,
+  getWatchProviders
 } from '../services/tmdb';
 import { loadSettings } from '../utils/settings';
 import AppFooter from '../components/AppFooter';
@@ -228,8 +231,14 @@ function TvShowPage() {
 
   const posterUrl = getImageUrl(show.poster_path);
   const genres = Array.isArray(show.genres) ? show.genres : [];
-  const cast = Array.isArray(show.credits?.cast) ? show.credits.cast.slice(0, 8) : [];
+  const cast = Array.isArray(show.credits?.cast) ? show.credits.cast.slice(0, 10) : [];
   const trailer = getTrailer(show.videos?.results || []);
+  const createdBy = Array.isArray(show.created_by) ? show.created_by : [];
+  const networks = Array.isArray(show.networks) ? show.networks : [];
+  const productionCountries = Array.isArray(show.origin_country) ? show.origin_country : [];
+  const episodeRunTime = Array.isArray(show.episode_run_time) ? show.episode_run_time : [];
+  const providers = getWatchProviders(show, settings.providersRegion);
+  const providerLink = getProviderLink(show, settings.providersRegion);
 
   let trailerExternalUrl = '';
   let trailerEmbedUrl = '';
@@ -277,7 +286,7 @@ function TvShowPage() {
             </div>
 
             <div className="app-card rounded-[28px] p-5 shadow-2xl">
-              <h2 className="text-lg font-bold app-title">Кратко о сериале</h2>
+              <h2 className="text-lg font-bold app-title">Основные факты</h2>
 
               <div className="mt-4 space-y-3">
                 <div className="app-card-strong rounded-2xl px-4 py-3">
@@ -291,6 +300,13 @@ function TvShowPage() {
                   <p className="text-xs uppercase tracking-wide app-text-soft">Первый выход</p>
                   <p className="mt-1 text-sm font-semibold app-title">
                     {show.first_air_date || 'Неизвестно'}
+                  </p>
+                </div>
+
+                <div className="app-card-strong rounded-2xl px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Статус</p>
+                  <p className="mt-1 text-sm font-semibold app-title">
+                    {show.status || 'Неизвестно'}
                   </p>
                 </div>
 
@@ -321,24 +337,40 @@ function TvShowPage() {
                 {getTvTitle(show)}
               </h1>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <div className="app-btn-accent-soft rounded-2xl px-4 py-2 text-sm font-semibold">
-                  Рейтинг TMDB: {show.vote_average ? show.vote_average.toFixed(1) : '—'}
+              {!!show.tagline && (
+                <p className="mt-3 text-sm italic app-text-soft">
+                  {show.tagline}
+                </p>
+              )}
+
+              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="app-card-strong rounded-2xl px-4 py-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Статус</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {getSavedTypeLabel(currentSavedType)}
+                  </p>
                 </div>
 
-                <div className="app-chip rounded-2xl px-4 py-2 text-sm">
-                  Первый выход: {show.first_air_date || 'Неизвестно'}
+                <div className="app-card-strong rounded-2xl px-4 py-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Моя оценка</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {hasUserRating ? savedShow.user_rating : 'Нет оценки'}
+                  </p>
                 </div>
 
-                <div className="app-chip rounded-2xl px-4 py-2 text-sm">
-                  Сезонов: {show.number_of_seasons ?? 'Неизвестно'}
+                <div className="app-card-strong rounded-2xl px-4 py-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Моя заметка</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {hasUserNote ? 'Есть заметка' : 'Пока пусто'}
+                  </p>
                 </div>
 
-                {hasUserRating && (
-                  <div className="app-btn-success-soft rounded-2xl px-4 py-2 text-sm font-semibold">
-                    Моя оценка: {savedShow.user_rating}
-                  </div>
-                )}
+                <div className="app-card-strong rounded-2xl px-4 py-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Эпизодов</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {show.number_of_episodes ?? 'Неизвестно'}
+                  </p>
+                </div>
               </div>
 
               <section className="mt-8">
@@ -361,29 +393,6 @@ function TvShowPage() {
                         Удалить из сохранённых
                       </button>
                     )}
-                  </div>
-
-                  <div className="mt-5 grid gap-4 md:grid-cols-3">
-                    <div className="rounded-2xl app-card px-4 py-4">
-                      <p className="text-xs uppercase tracking-wide app-text-soft">Статус</p>
-                      <p className="mt-2 text-sm font-semibold app-title">
-                        {getSavedTypeLabel(currentSavedType)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl app-card px-4 py-4">
-                      <p className="text-xs uppercase tracking-wide app-text-soft">Моя оценка</p>
-                      <p className="mt-2 text-sm font-semibold app-title">
-                        {hasUserRating ? savedShow.user_rating : 'Нет оценки'}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl app-card px-4 py-4">
-                      <p className="text-xs uppercase tracking-wide app-text-soft">Моя заметка</p>
-                      <p className="mt-2 text-sm font-semibold app-title">
-                        {hasUserNote ? 'Есть заметка' : 'Пока пусто'}
-                      </p>
-                    </div>
                   </div>
 
                   <div className="mt-6 grid gap-6 xl:grid-cols-2">
@@ -517,6 +526,53 @@ function TvShowPage() {
               </section>
 
               <section className="mt-8">
+                <h2 className="text-xl font-bold app-title">Дополнительная информация</h2>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="app-card-strong rounded-2xl p-4">
+                    <p className="text-xs uppercase tracking-wide app-text-soft">Страны</p>
+                    <p className="mt-2 text-sm font-semibold app-title">
+                      {productionCountries.length > 0
+                        ? productionCountries.join(', ')
+                        : 'Неизвестно'}
+                    </p>
+                  </div>
+
+                  <div className="app-card-strong rounded-2xl p-4">
+                    <p className="text-xs uppercase tracking-wide app-text-soft">Эпизодов</p>
+                    <p className="mt-2 text-sm font-semibold app-title">
+                      {show.number_of_episodes ?? 'Неизвестно'}
+                    </p>
+                  </div>
+
+                  <div className="app-card-strong rounded-2xl p-4">
+                    <p className="text-xs uppercase tracking-wide app-text-soft">Длительность серии</p>
+                    <p className="mt-2 text-sm font-semibold app-title">
+                      {episodeRunTime.length > 0 ? `${episodeRunTime[0]} мин.` : 'Неизвестно'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 app-card-strong rounded-2xl p-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Создатели</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {createdBy.length > 0
+                      ? createdBy.map((person) => person.name).join(', ')
+                      : 'Информация не указана'}
+                  </p>
+                </div>
+
+                <div className="mt-4 app-card-strong rounded-2xl p-4">
+                  <p className="text-xs uppercase tracking-wide app-text-soft">Сети / телеканалы</p>
+                  <p className="mt-2 text-sm font-semibold app-title">
+                    {networks.length > 0
+                      ? networks.map((network) => network.name).join(', ')
+                      : 'Информация не указана'}
+                  </p>
+                </div>
+              </section>
+
+              <section className="mt-8">
                 <h2 className="text-xl font-bold app-title">Жанры</h2>
 
                 {genres.length > 0 ? (
@@ -533,17 +589,20 @@ function TvShowPage() {
               </section>
 
               <section className="mt-8">
-                <h2 className="text-xl font-bold app-title">Актёры</h2>
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="text-xl font-bold app-title">Актёры</h2>
+                  <p className="text-sm app-text-soft">Первые {cast.length} актёров</p>
+                </div>
 
                 {cast.length > 0 ? (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
                     {cast.map((person) => (
                       <div
                         key={person.cast_id || person.credit_id}
                         className="app-card-strong rounded-2xl p-4"
                       >
-                        <p className="font-semibold app-title">{person.name}</p>
-                        <p className="mt-1 text-sm app-text-soft">
+                        <p className="text-sm font-semibold app-title">{person.name}</p>
+                        <p className="mt-1 text-xs app-text-soft">
                           {person.character || 'Роль не указана'}
                         </p>
                       </div>
@@ -609,6 +668,91 @@ function TvShowPage() {
             </div>
           </div>
         </div>
+
+        <section className="mt-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold app-title">Где смотреть</h2>
+              <p className="mt-1 text-sm app-text-soft">
+                Регион провайдеров: {settings.providersRegion}
+              </p>
+            </div>
+
+            {providerLink && (
+              <a
+                href={providerLink}
+                target="_blank"
+                rel="noreferrer"
+                className="app-btn-info-soft inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+              >
+                Все варианты просмотра ↗
+              </a>
+            )}
+          </div>
+
+          {providers.length > 0 ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {providers.map((provider) => {
+                const logoUrl = getLogoUrl(provider.logo_path);
+
+                const providerCardContent = (
+                  <>
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-white/20">
+                      {logoUrl ? (
+                        <img
+                          src={logoUrl}
+                          alt={provider.provider_name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-xs app-text-soft">Лого</span>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold app-title">
+                        {provider.provider_name}
+                      </p>
+                      <p className="mt-1 text-xs app-text-soft">
+                        Открыть варианты просмотра ↗
+                      </p>
+                    </div>
+                  </>
+                );
+
+                if (providerLink) {
+                  return (
+                    <a
+                      key={provider.provider_id}
+                      href={providerLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="app-card-strong flex items-center gap-3 rounded-2xl p-4 transition hover:opacity-90"
+                      title={`Открыть варианты просмотра для ${provider.provider_name}`}
+                    >
+                      {providerCardContent}
+                    </a>
+                  );
+                }
+
+                return (
+                  <div
+                    key={provider.provider_id}
+                    className="app-card-strong flex items-center gap-3 rounded-2xl p-4"
+                  >
+                    {providerCardContent}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="app-card-strong mt-4 rounded-2xl p-4">
+              <p className="text-sm app-text-muted">
+                Для этого сериала пока нет данных о провайдерах просмотра для региона {settings.providersRegion}.
+              </p>
+            </div>
+          )}
+        </section>
 
         <section className="mt-10">
           <div className="mb-4 flex items-center justify-between gap-4">
