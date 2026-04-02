@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import MovieCard from '../components/MovieCard';
 import { getPopularTvShows, searchTvShows } from '../services/tmdb';
+import AppFooter from '../components/AppFooter';
 
 function SeriesPage() {
   const [popularShows, setPopularShows] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
+  const [savedMap, setSavedMap] = useState({});
   const [isLoadingPopular, setIsLoadingPopular] = useState(true);
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
   const [error, setError] = useState('');
@@ -13,6 +15,30 @@ function SeriesPage() {
   const [currentQuery, setCurrentQuery] = useState('');
 
   const sliderRef = useRef(null);
+
+  async function loadSavedStatuses() {
+    try {
+      const savedTypes = await window.electronAPI.getSavedTypes();
+      const nextMap = {};
+
+      const results = await Promise.all(
+        (savedTypes || []).map(async (type) => {
+          const data = await window.electronAPI.getSavedMoviesByType(type, 'tv');
+          return { type, data: Array.isArray(data) ? data : [] };
+        })
+      );
+
+      for (const result of results) {
+        for (const show of result.data) {
+          nextMap[show.id] = result.type;
+        }
+      }
+
+      setSavedMap(nextMap);
+    } catch {
+      // ничего страшного
+    }
+  }
 
   async function loadPopular() {
     try {
@@ -63,7 +89,9 @@ function SeriesPage() {
   }
 
   function scrollSliderLeft() {
-    if (!sliderRef.current) return;
+    if (!sliderRef.current) {
+      return;
+    }
 
     sliderRef.current.scrollBy({
       left: -700,
@@ -72,7 +100,9 @@ function SeriesPage() {
   }
 
   function scrollSliderRight() {
-    if (!sliderRef.current) return;
+    if (!sliderRef.current) {
+      return;
+    }
 
     sliderRef.current.scrollBy({
       left: 700,
@@ -81,7 +111,11 @@ function SeriesPage() {
   }
 
   useEffect(() => {
-    loadPopular();
+    async function loadPage() {
+      await Promise.all([loadPopular(), loadSavedStatuses()]);
+    }
+
+    loadPage();
   }, []);
 
   return (
@@ -96,7 +130,8 @@ function SeriesPage() {
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm leading-7 app-text-muted sm:text-base">
-              Здесь можно искать сериалы и открывать их подробные страницы.
+              Здесь можно искать сериалы, открывать подробные страницы и сохранять их
+              в свою библиотеку со статусом, оценкой и заметкой.
             </p>
           </div>
 
@@ -138,7 +173,7 @@ function SeriesPage() {
         </section>
 
         {error && (
-          <div className="mb-8 rounded-3xl border border-red-400/20 bg-red-500/10 p-6 text-red-700 backdrop-blur-xl dark:text-red-100">
+          <div className="app-alert-danger mb-8 rounded-3xl p-6">
             <p className="text-lg font-semibold">Ошибка загрузки</p>
             <p className="mt-2 text-sm leading-6">{error}</p>
           </div>
@@ -153,6 +188,7 @@ function SeriesPage() {
                 type="button"
                 onClick={scrollSliderLeft}
                 className="app-card flex h-11 w-11 items-center justify-center rounded-full text-xl app-text transition hover:opacity-90"
+                aria-label="Прокрутить популярные сериалы влево"
               >
                 ←
               </button>
@@ -161,6 +197,7 @@ function SeriesPage() {
                 type="button"
                 onClick={scrollSliderRight}
                 className="app-card flex h-11 w-11 items-center justify-center rounded-full text-xl app-text transition hover:opacity-90"
+                aria-label="Прокрутить популярные сериалы вправо"
               >
                 →
               </button>
@@ -179,6 +216,7 @@ function SeriesPage() {
                   movie={show}
                   compact
                   mediaType="tv"
+                  savedType={savedMap[show.id] || ''}
                 />
               ))}
             </div>
@@ -211,6 +249,7 @@ function SeriesPage() {
                   key={show.id}
                   movie={show}
                   mediaType="tv"
+                  savedType={savedMap[show.id] || ''}
                 />
               ))}
             </div>
@@ -222,6 +261,8 @@ function SeriesPage() {
             </div>
           )}
         </section>
+
+        <AppFooter />
       </div>
     </div>
   );

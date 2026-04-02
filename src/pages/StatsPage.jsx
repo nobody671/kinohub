@@ -56,7 +56,7 @@ function StatsPage() {
         )}
 
         {!isLoading && error && (
-          <div className="rounded-3xl border border-red-400/20 bg-red-500/10 p-6 text-red-700 backdrop-blur-xl dark:text-red-100">
+          <div className="app-alert-danger rounded-3xl p-6">
             <p className="text-lg font-semibold">Ошибка</p>
             <p className="mt-2 text-sm">{error}</p>
           </div>
@@ -67,13 +67,13 @@ function StatsPage() {
             <StatCard
               title="Всего сохранено"
               value={stats.totalSaved}
-              subtitle="Уникальные фильмы из всех списков"
+              subtitle="Уникальные фильмы из всех статусов"
             />
 
             <StatCard
               title="В избранном"
               value={stats.totalFavorites}
-              subtitle="Фильмы, которые ты отметил как любимые"
+              subtitle="Фильмы, отмеченные как любимые"
             />
 
             <StatCard
@@ -83,9 +83,51 @@ function StatsPage() {
             />
 
             <StatCard
-              title="Средний рейтинг"
+              title="Смотрю"
+              value={stats.totalWatching}
+              subtitle="Фильмы, которые ты сейчас смотришь"
+            />
+
+            <StatCard
+              title="Просмотрено"
+              value={stats.totalWatched}
+              subtitle="Фильмы, просмотр которых уже завершён"
+            />
+
+            <StatCard
+              title="Брошено"
+              value={stats.totalDropped}
+              subtitle="Фильмы, которые ты решил не продолжать"
+            />
+
+            <StatCard
+              title="Пересмотреть"
+              value={stats.totalRewatch}
+              subtitle="Фильмы, к которым хочешь вернуться ещё раз"
+            />
+
+            <StatCard
+              title="Средний рейтинг TMDB"
               value={stats.averageRating ? stats.averageRating.toFixed(1) : '—'}
-              subtitle="Средняя оценка сохранённых фильмов"
+              subtitle="Средняя внешняя оценка сохранённых фильмов"
+            />
+
+            <StatCard
+              title="Оценено лично"
+              value={stats.totalUserRated}
+              subtitle="Сколько фильмов уже получили твою оценку"
+            />
+
+            <StatCard
+              title="Средняя моя оценка"
+              value={stats.averageUserRating ? stats.averageUserRating.toFixed(1) : '—'}
+              subtitle="Средняя личная оценка по твоей библиотеке"
+            />
+
+            <StatCard
+              title="Фильмов с заметками"
+              value={stats.totalUserNotes}
+              subtitle="Сколько фильмов уже получили твою личную заметку"
             />
           </div>
         )}

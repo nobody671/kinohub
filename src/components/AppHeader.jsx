@@ -67,15 +67,14 @@ function AppHeader() {
             </Link>
 
             <p className="mt-1 text-sm app-text-soft">
-              Фильмы, сериалы, избранное и список на будущее
+              Фильмы, сериалы, личная библиотека и подборки на будущее
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <NavLink to="/">Главная</NavLink>
             <NavLink to="/series">Сериалы</NavLink>
-            <NavLink to="/favorites">Избранное</NavLink>
-            <NavLink to="/watchlist">Хочу посмотреть</NavLink>
+            <NavLink to="/library">Моя библиотека</NavLink>
             <NavLink to="/stats">Статистика</NavLink>
             <NavLink to="/settings">Настройки</NavLink>
           </div>

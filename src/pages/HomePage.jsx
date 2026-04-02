@@ -18,20 +18,19 @@ function HomePage() {
 
   async function loadSavedStatuses() {
     try {
-      const [favorites, watchlist] = await Promise.all([
-        window.electronAPI.getFavorites(),
-        window.electronAPI.getWatchlist()
-      ]);
-
+      const savedTypes = await window.electronAPI.getSavedTypes();
       const nextMap = {};
 
-      for (const movie of favorites || []) {
-        nextMap[movie.id] = 'favorite';
-      }
+      const results = await Promise.all(
+        (savedTypes || []).map(async (type) => {
+          const data = await window.electronAPI.getSavedMoviesByType(type);
+          return { type, data: Array.isArray(data) ? data : [] };
+        })
+      );
 
-      for (const movie of watchlist || []) {
-        if (!nextMap[movie.id]) {
-          nextMap[movie.id] = 'watchlist';
+      for (const result of results) {
+        for (const movie of result.data) {
+          nextMap[movie.id] = result.type;
         }
       }
 
@@ -173,7 +172,7 @@ function HomePage() {
         </section>
 
         {error && (
-          <div className="mb-8 rounded-3xl border border-red-400/20 bg-red-500/10 p-6 text-red-700 backdrop-blur-xl dark:text-red-100">
+          <div className="app-alert-danger mb-8 rounded-3xl p-6">
             <p className="text-lg font-semibold">Ошибка загрузки</p>
             <p className="mt-2 text-sm leading-6">{error}</p>
           </div>
@@ -262,6 +261,7 @@ function HomePage() {
             </div>
           )}
         </section>
+
         <AppFooter />
       </div>
     </div>

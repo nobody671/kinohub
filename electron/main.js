@@ -2,13 +2,17 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const {
+  VALID_SAVED_TYPES,
   getDatabase,
   getDatabasePath,
   closeDatabase,
   saveMovie,
   removeMovie,
   getSavedMovie,
-  getSavedMoviesByType
+  getSavedMoviesByType,
+  getAllSavedMovies,
+  saveUserRating,
+  saveUserNote
 } = require('./database');
 
 let mainWindow = null;
@@ -31,27 +35,17 @@ function createWindow() {
 }
 
 function getStats() {
-  const db = getDatabase();
+  const allSaved = getAllSavedMovies();
 
-  const favorites = getSavedMoviesByType('favorite');
-  const watchlist = getSavedMoviesByType('watchlist');
-  const allSaved = [...favorites, ...watchlist];
+  const totalSaved = allSaved.length;
+  const totalFavorites = allSaved.filter((movie) => movie.type === 'favorite').length;
+  const totalWatchlist = allSaved.filter((movie) => movie.type === 'watchlist').length;
+  const totalWatching = allSaved.filter((movie) => movie.type === 'watching').length;
+  const totalWatched = allSaved.filter((movie) => movie.type === 'watched').length;
+  const totalDropped = allSaved.filter((movie) => movie.type === 'dropped').length;
+  const totalRewatch = allSaved.filter((movie) => movie.type === 'rewatch').length;
 
-  const uniqueMoviesMap = new Map();
-
-  for (const movie of allSaved) {
-    if (!uniqueMoviesMap.has(movie.id)) {
-      uniqueMoviesMap.set(movie.id, movie);
-    }
-  }
-
-  const uniqueMovies = Array.from(uniqueMoviesMap.values());
-
-  const totalFavorites = favorites.length;
-  const totalWatchlist = watchlist.length;
-  const totalSaved = uniqueMovies.length;
-
-  const ratedMovies = uniqueMovies.filter(
+  const ratedMovies = allSaved.filter(
     (movie) => typeof movie.vote_average === 'number' && movie.vote_average > 0
   );
 
@@ -61,36 +55,101 @@ function getStats() {
         ratedMovies.length
       : 0;
 
+  const userRatedMovies = allSaved.filter(
+    (movie) => typeof movie.user_rating === 'number' && movie.user_rating > 0
+  );
+
+  const totalUserRated = userRatedMovies.length;
+
+  const averageUserRating =
+    userRatedMovies.length > 0
+      ? userRatedMovies.reduce((sum, movie) => sum + movie.user_rating, 0) /
+        userRatedMovies.length
+      : 0;
+
+  const moviesWithNotes = allSaved.filter(
+    (movie) => typeof movie.user_note === 'string' && movie.user_note.trim().length > 0
+  );
+
+  const totalUserNotes = moviesWithNotes.length;
+
   return {
+    totalSaved,
     totalFavorites,
     totalWatchlist,
-    totalSaved,
-    averageRating
+    totalWatching,
+    totalWatched,
+    totalDropped,
+    totalRewatch,
+    averageRating,
+    totalUserRated,
+    averageUserRating,
+    totalUserNotes
   };
 }
 
 ipcMain.handle('db:save-favorite', async (_, movie) => {
-  return saveMovie(movie, 'favorite');
+  return saveMovie(movie, 'favorite', 'movie');
 });
 
 ipcMain.handle('db:save-watchlist', async (_, movie) => {
-  return saveMovie(movie, 'watchlist');
+  return saveMovie(movie, 'watchlist', 'movie');
+});
+
+ipcMain.handle('db:save-movie-status', async (_, movie, type) => {
+  return saveMovie(movie, type, 'movie');
+});
+
+ipcMain.handle('db:save-media-status', async (_, item, type, mediaType) => {
+  return saveMovie(item, type, mediaType);
+});
+
+ipcMain.handle('db:save-user-rating', async (_, movieId, rating) => {
+  return saveUserRating(movieId, rating, 'movie');
+});
+
+ipcMain.handle('db:save-user-rating-for-media', async (_, itemId, rating, mediaType) => {
+  return saveUserRating(itemId, rating, mediaType);
+});
+
+ipcMain.handle('db:save-user-note', async (_, movieId, note) => {
+  return saveUserNote(movieId, note, 'movie');
+});
+
+ipcMain.handle('db:save-user-note-for-media', async (_, itemId, note, mediaType) => {
+  return saveUserNote(itemId, note, mediaType);
 });
 
 ipcMain.handle('db:remove-movie', async (_, movieId) => {
-  return removeMovie(movieId);
+  return removeMovie(movieId, 'movie');
+});
+
+ipcMain.handle('db:remove-saved-item', async (_, itemId, mediaType) => {
+  return removeMovie(itemId, mediaType);
 });
 
 ipcMain.handle('db:get-saved-movie', async (_, movieId) => {
-  return getSavedMovie(movieId);
+  return getSavedMovie(movieId, 'movie');
+});
+
+ipcMain.handle('db:get-saved-item', async (_, itemId, mediaType) => {
+  return getSavedMovie(itemId, mediaType);
 });
 
 ipcMain.handle('db:get-favorites', async () => {
-  return getSavedMoviesByType('favorite');
+  return getSavedMoviesByType('favorite', 'movie');
 });
 
 ipcMain.handle('db:get-watchlist', async () => {
-  return getSavedMoviesByType('watchlist');
+  return getSavedMoviesByType('watchlist', 'movie');
+});
+
+ipcMain.handle('db:get-saved-movies-by-type', async (_, type, mediaType) => {
+  return getSavedMoviesByType(type, mediaType || null);
+});
+
+ipcMain.handle('db:get-saved-types', async () => {
+  return VALID_SAVED_TYPES;
 });
 
 ipcMain.handle('db:get-stats', async () => {
